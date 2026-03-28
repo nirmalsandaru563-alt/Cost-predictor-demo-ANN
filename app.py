@@ -1,32 +1,62 @@
 import streamlit as st
-import pandas as pd
+import streamlit_authenticator as stauth
+import yaml
+from yaml.loader import SafeLoader
 import joblib
+import pandas as pd
 
-# 1. Load the ANN files
-model = joblib.load('ann_model.pkl')
-scaler = joblib.load('scaler.pkl')
-model_columns = joblib.load('model_columns_svm.pkl')
+# 1. Setup User Data
+names = ["User 1", "User 2", "User 3", "User 4"]
+usernames = ["222689F", "222710N", "222111L", "222333K"]
 
-st.title("🧠 ANN Construction Cost Predictor")
+# For the first run, passwords are the same as usernames
+# We 'hash' them so they aren't stored as plain text (Security Best Practice)
+hashed_passwords = stauth.Hasher(usernames).generate()
 
-# 2. User Inputs
-p_type = st.selectbox("Project Type", ['Residential', 'Commercial', 'Industrial', 'Other'])
-area = st.number_input("Floor Area (m²)", value=100.0)
-floors = st.number_input("No. of Floors", min_value=1, value=1)
+# 2. Create the Credentials Dictionary
+credentials = {"usernames": {}}
+for name, username, password in zip(names, usernames, hashed_passwords):
+    credentials["usernames"][username] = {
+        "name": name,
+        "password": password
+    }
 
-# 3. Create input row and map data
-input_df = pd.DataFrame(0, index=[0], columns=model_columns)
-input_df['Floor Area (m²)'] = area
-input_df['No. of Floors'] = floors
-target_col = f"Project Type_{p_type}"
-if target_col in input_df.columns:
-    input_df[target_col] = 1
+# 3. Initialize Authenticator
+authenticator = stauth.Authenticate(
+    credentials,
+    "construction_delay_cookie", # Cookie name to keep user logged in
+    "signature_key",             # Key for the cookie
+    cookie_expiry_days=30
+)
 
-# 4. Scale the input (Required for ANN)
-input_scaled = scaler.transform(input_df)
+# 4. Render the Login Widget
+name, authentication_status, username = authenticator.login("Login", "main")
 
-# 5. Predict
-if st.button("Calculate ANN Estimate"):
-    prediction = model.predict(input_scaled)[0]
-    st.success(f"### ANN Predicted Cost: {prediction:.2f} LKR Million")
-    st.info("ANNs look for deep patterns but need lots of data to be 100% accurate.")
+if authentication_status == False:
+    st.error("Username/password is incorrect")
+elif authentication_status == None:
+    st.warning("Please enter your username and password")
+elif authentication_status:
+    # --- LOGGED IN AREA ---
+    
+    # Sidebar features
+    authenticator.logout("Logout", "sidebar")
+    st.sidebar.title(f"Welcome {name}")
+    
+    # ALLOW PASSWORD CHANGE
+    if st.sidebar.checkbox("Change Password"):
+        try:
+            if authenticator.reset_password(username, 'Change Password'):
+                st.sidebar.success('Password modified successfully')
+        except Exception as e:
+            st.sidebar.error(e)
+
+    # --- YOUR ANN MODEL CODE STARTS HERE ---
+    st.title("🏗️ High-Rise Delay Prediction (ANN)")
+    
+    # Load your models
+    model = joblib.load('ann_model.pkl')
+    scaler = joblib.load('scaler.pkl')
+    model_columns = joblib.load('model_columns_svm.pkl')
+
+    # (Add your sliders and prediction logic here exactly as before...)
