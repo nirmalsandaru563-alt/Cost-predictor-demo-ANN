@@ -3,4 +3,4 @@ pandas
 scikit-learn
 joblib
 openpyxl
-streamlit-authenticator
+streamlit-authenticator==0.3.2
