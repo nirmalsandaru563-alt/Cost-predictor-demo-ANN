@@ -29,11 +29,12 @@ elif st.session_state["authentication_status"] is None:
     st.warning("Please enter your username and password")
 elif st.session_state["authentication_status"]:
 
-
-st.sidebar.title(f"Welcome, {st.session_state['name']}")
+# EVERYTHING BELOW IS NOW INDENTED (Pushed to the right)
+    
+    st.sidebar.title(f"Welcome, {st.session_state['name']}")
     authenticator.logout("Logout", "sidebar")
 
-if st.sidebar.checkbox("Reset Password"):
+    if st.sidebar.checkbox("Reset Password"):
         try:
             if authenticator.reset_password(st.session_state["username"], 'Reset Password'):
                 st.sidebar.success('Password modified successfully')
