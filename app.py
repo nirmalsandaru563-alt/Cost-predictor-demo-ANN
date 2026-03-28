@@ -7,8 +7,8 @@ import joblib
 credentials = {
     "usernames": {
         "222689F": {"name": "Nirmal", "password": "222689F"},
-        "222710N": {"name": "Lakshan", "password": "222710N"},
-        "222111L": {"name": "Wenura", "password": "222111L"},
+        "222710N": {"name": "Motta Lamaya", "password": "222710N"},
+        "222111L": {"name": "Chandima", "password": "222111L"},
         "222333K": {"name": "UoM User", "password": "222333K"}
     }
 }
