@@ -3,6 +3,7 @@ import streamlit_authenticator as stauth
 import pandas as pd
 import joblib
 
+# --- Credentials Setup ---
 credentials = {
     "usernames": {
         "222689F": {"name": "Nirmal", "password": "222689F"},
@@ -21,52 +22,61 @@ authenticator = stauth.Authenticate(
     cookie_expiry_days=30
 )
 
+# --- 1. RENDER LOGIN ---
+# This stays at the left margin (Public)
 authenticator.login()
 
+# --- 2. AUTHENTICATION LOGIC ---
 if st.session_state["authentication_status"] is False:
     st.error("Username/password is incorrect")
 elif st.session_state["authentication_status"] is None:
     st.warning("Please enter your username and password")
 elif st.session_state["authentication_status"]:
-
-# EVERYTHING BELOW IS NOW INDENTED (Pushed to the right)
+    # --- EVERYTHING FROM HERE DOWN MUST BE INDENTED ---
     
+    # 3. Sidebar Setup
     st.sidebar.title(f"Welcome, {st.session_state['name']}")
     authenticator.logout("Logout", "sidebar")
 
+    # 4. Fixed Reset Password (Added 'sidebar' location)
     if st.sidebar.checkbox("Reset Password"):
         try:
-            if authenticator.reset_password(st.session_state["username"], 'Reset Password'):
+            # We must tell the tool to appear in the 'sidebar'
+            if authenticator.reset_password(st.session_state["username"], location='sidebar'):
                 st.sidebar.success('Password modified successfully')
         except Exception as e:
-            st.sidebar.error(e)
+            st.sidebar.error(f"Error: {e}")
 
+    # 5. Load the ANN files (Now protected inside the login block)
+    try:
+        model = joblib.load('ann_model.pkl')
+        scaler = joblib.load('scaler.pkl')
+        model_columns = joblib.load('model_columns_svm.pkl')
 
-# 1. Load the ANN files
-model = joblib.load('ann_model.pkl')
-scaler = joblib.load('scaler.pkl')
-model_columns = joblib.load('model_columns_svm.pkl')
+        st.title("🧠 ANN Construction Cost Predictor")
 
-st.title("🧠 ANN Construction Cost Predictor")
+        # 6. User Inputs
+        p_type = st.selectbox("Project Type", ['Residential', 'Commercial', 'Industrial', 'Other'])
+        area = st.number_input("Floor Area (m²)", value=100.0)
+        floors = st.number_input("No. of Floors", min_value=1, value=1)
 
-# 2. User Inputs
-p_type = st.selectbox("Project Type", ['Residential', 'Commercial', 'Industrial', 'Other'])
-area = st.number_input("Floor Area (m²)", value=100.0)
-floors = st.number_input("No. of Floors", min_value=1, value=1)
+        # 7. Create input row and map data
+        input_df = pd.DataFrame(0, index=[0], columns=model_columns)
+        input_df['Floor Area (m²)'] = area
+        input_df['No. of Floors'] = floors
+        
+        target_col = f"Project Type_{p_type}"
+        if target_col in input_df.columns:
+            input_df[target_col] = 1
 
-# 3. Create input row and map data
-input_df = pd.DataFrame(0, index=[0], columns=model_columns)
-input_df['Floor Area (m²)'] = area
-input_df['No. of Floors'] = floors
-target_col = f"Project Type_{p_type}"
-if target_col in input_df.columns:
-    input_df[target_col] = 1
+        # 8. Scale the input
+        input_scaled = scaler.transform(input_df)
 
-# 4. Scale the input (Required for ANN)
-input_scaled = scaler.transform(input_df)
-
-# 5. Predict
-if st.button("Calculate ANN Estimate"):
-    prediction = model.predict(input_scaled)[0]
-    st.success(f"### ANN Predicted Cost: {prediction:.2f} LKR Million")
-    st.info("ANNs look for deep patterns but need lots of data to be 100% accurate.")
+        # 9. Predict
+        if st.button("Calculate ANN Estimate"):
+            prediction = model.predict(input_scaled)[0]
+            st.success(f"### ANN Predicted Cost: {prediction:.2f} LKR Million")
+            st.info("ANNs look for deep patterns but need lots of data to be 100% accurate.")
+            
+    except Exception as e:
+        st.error(f"Could not load model files. Error: {e}")
