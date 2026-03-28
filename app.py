@@ -1,7 +1,5 @@
 import streamlit as st
 import streamlit_authenticator as stauth
-import yaml
-from yaml.loader import SafeLoader
 import joblib
 import pandas as pd
 
@@ -9,39 +7,46 @@ import pandas as pd
 names = ["User 1", "User 2", "User 3", "User 4"]
 usernames = ["222689F", "222710N", "222111L", "222333K"]
 
-# For the first run, passwords are the same as usernames
-# We 'hash' them so they aren't stored as plain text (Security Best Practice)
-hashed_passwords = stauth.Hasher(usernames).generate()
+# NEW METHOD: We hash the passwords individually
+# Note: In the new version, Hasher expects a list and returns a list
+hashed_passwords = stauth.Hasher(usernames).generate() 
 
 # 2. Create the Credentials Dictionary
+# The library now requires 'emails' to be present (even if empty)
 credentials = {"usernames": {}}
 for name, username, password in zip(names, usernames, hashed_passwords):
     credentials["usernames"][username] = {
         "name": name,
-        "password": password
+        "password": password,
+        "email": f"{username}@uom.lk" # Added a placeholder email
     }
 
 # 3. Initialize Authenticator
+# The new version uses 'cookie_name' and 'key' as keyword arguments
 authenticator = stauth.Authenticate(
     credentials,
-    "construction_delay_cookie", # Cookie name to keep user logged in
-    "signature_key",             # Key for the cookie
+    "construction_delay_cookie", 
+    "signature_key",             
     cookie_expiry_days=30
 )
 
 # 4. Render the Login Widget
-name, authentication_status, username = authenticator.login("Login", "main")
+# In the new version, it returns a dict of info
+try:
+    authenticator.login()
+except Exception as e:
+    st.error(e)
 
-if authentication_status == False:
+if st.session_state["authentication_status"] == False:
     st.error("Username/password is incorrect")
-elif authentication_status == None:
+elif st.session_state["authentication_status"] == None:
     st.warning("Please enter your username and password")
-elif authentication_status:
+elif st.session_state["authentication_status"]:
     # --- LOGGED IN AREA ---
-    
-    # Sidebar features
     authenticator.logout("Logout", "sidebar")
-    st.sidebar.title(f"Welcome {name}")
+    st.sidebar.title(f"Welcome {st.session_state['name']}")
+    
+    # Rest of your prediction code goes here...
     
     # ALLOW PASSWORD CHANGE
     if st.sidebar.checkbox("Change Password"):
